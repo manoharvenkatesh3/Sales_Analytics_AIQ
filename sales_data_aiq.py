@@ -19,6 +19,7 @@ os.environ['OPENWEATHERMAP_API_KEY'] = 'e9005334bb02cbfd470051804f3f731d'
 import pandas as pd
 
 # Load the sales data CSV file into a pandas DataFrame
+# Give Appropriate path for the sales_data.csv instead of /content/sample_data/sales_data.csv
 sales_df = pd.read_csv('/content/sample_data/sales_data.csv')
 
 # Convert order_id, customer_id, and product_id columns to integers
