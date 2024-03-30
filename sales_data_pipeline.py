@@ -17,10 +17,18 @@ import os
 os.environ['OPENWEATHERMAP_API_KEY'] = 'e9005334bb02cbfd470051804f3f731d'
 
 import pandas as pd
+import sys
+
+# Get the source file from the command-line arguments
+source_file = sys.argv[1]
 
 # Load the sales data CSV file into a pandas DataFrame
-# Give Appropriate path for the sales_data.csv instead of /content/sample_data/sales_data.csv
-sales_df = pd.read_csv('/content/sample_data/sales_data.csv')
+sales_df = pd.read_csv(source_file)
+
+#import pandas as pd
+
+# Load the sales data CSV file into a pandas DataFrame
+#sales_df = pd.read_csv('/content/sample_data/sales_data.csv')
 
 # Convert order_id, customer_id, and product_id columns to integers
 sales_df.dtypes[['order_id']] = int
@@ -43,6 +51,7 @@ sales_df.fillna(0, inplace=True)
 sales_df.dropna(subset=['order_id', 'customer_id', 'product_id'], inplace=True)
 
 # Print the cleaned and preprocessed DataFrame
+print("\n Printing the cleaned and preprocessed Data")
 print(sales_df)
 
 # Define a function to fetch user data from the JSONPlaceholder API
@@ -58,8 +67,9 @@ user_data = fetch_user_data(user_ids)
 user_sales_df = pd.json_normalize(user_data)[['id', 'name', 'username', 'email', 'address.geo.lat', 'address.geo.lng']]
 merged_df = pd.merge(sales_df, user_sales_df, left_on='customer_id', right_on='id', how='left')
 merged_df = merged_df.rename(columns={'price':'sales_amount','quantity':'order_quantity','address.geo.lat':'lat','address.geo.lng':'lon'})
+print("n Printing user data from the JSONPlaceholder API")
 print(merged_df)
-
+'''
 import json
 import requests
 
@@ -82,14 +92,63 @@ def extract_weather_info(weather_data):
 # Add weather data
 merged_df['weather_data'] = merged_df.apply(lambda row: extract_weather_info(get_weather_data(row['lat'], row['lon'])), axis=1)
 print(merged_df)
+'''
 
-!pip install pyodbc
+# Function to fetch weather data
+import concurrent.futures
+# Importing ThreadPoolExecutor
+from concurrent.futures import ThreadPoolExecutor
+
+def fetch_weather_data(lat_lon_pairs):
+    api_key = os.getenv('OPENWEATHERMAP_API_KEY')
+    url = f'https://api.openweathermap.org/data/2.5/weather'
+    weather_data_list = []
+
+    with ThreadPoolExecutor() as executor:
+        # Submit API requests concurrently
+        futures = [executor.submit(fetch_weather, url, lat, lon, api_key) for lat, lon in lat_lon_pairs]
+
+        # Gather results
+        for future in futures:
+            try:
+                weather_data = future.result()
+                weather_data_list.append(weather_data)
+            except Exception as e:
+                print(f"Error fetching weather data: {e}")
+
+    return weather_data_list
+
+# Function to fetch weather for a single location
+def fetch_weather(url, lat, lon, api_key):
+    params = {'lat': lat, 'lon': lon, 'appid': api_key, 'units': 'metric'}
+    response = requests.get(url, params=params)
+    response.raise_for_status()  # Raise an exception for 4XX or 5XX status codes
+    return response.json()
+
+# Function to extract weather information
+def extract_weather_info(weather_data):
+    weather_info = {
+        'temperature': weather_data['main']['temp'],
+        'conditions': weather_data['weather'][0]['description']
+    }
+    return weather_info
+
+# Batch processing to fetch weather data
+batch_size = 10
+lat_lon_pairs = [(row['lat'], row['lon']) for _, row in merged_df[['lat', 'lon']].iterrows()]
+weather_data = fetch_weather_data(lat_lon_pairs)
+
+# Extract weather information
+weather_info_list = [extract_weather_info(data) for data in weather_data]
+merged_df['weather_data'] = weather_info_list
+
+#!pip install pyodbc
 import sqlalchemy
 import pyodbc
 # Calculate total sales amount per customer
 customer_sales = merged_df.groupby(['customer_id','name'])['sales_amount'].sum().reset_index()
 customer_sales.columns = ['customer_id','Customer_Name','Total_sales_amt_per_customer']
-print("Total Sales Amount Per Customer:")
+print("\n Total Sales Amount Per Customer:")
 print(customer_sales)
 
 # Creating customer_sales table in SQLite Environment
@@ -279,11 +338,13 @@ plt.show()
 # Include weather data in the analysis
 weather_conditions = merged_df['weather_data'].apply(lambda x: x['conditions']).value_counts()
 print(weather_conditions)
+
+# Group by weather condition and calculate average sales
 avg_sales_by_condition = merged_df.groupby(merged_df['weather_data'].apply(lambda x: x['conditions']))['sales_amount'].mean().reset_index()
 avg_sales_by_condition.columns = ['weather_condition', 'avg_sales']
 print(avg_sales_by_condition)
 
-# Creating Avg_Sales_Weather table in SQLite Environment
+# Store data in SQLite database
 conn = sqlite3.connect('sales_analytics_database.db')
 avg_sales_by_condition.to_sql('Avg_Sales_Weather', conn, if_exists='replace', index=False)
 result = pd.read_sql_query('SELECT * FROM Avg_Sales_Weather', conn)
@@ -299,3 +360,4 @@ plt.pie(avg_sales_by_condition['avg_sales'], labels=avg_sales_by_condition['weat
 plt.axis('equal')
 plt.title('Distribution of Sales Amount Per Weather Condition')
 plt.tight_layout()
+plt.show()
