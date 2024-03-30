@@ -1,4 +1,3 @@
-# Sales_Analytics_AIQ
 **README**
 
 ## Data Pipeline Setup and Usage Instructions
@@ -34,11 +33,13 @@ This data pipeline is designed to transform and analyze sales data, incorporatin
 3. Obtain API keys for the JSONPlaceholder API and OpenWeatherMap API, and set them as environment variables (`JSONPLACEHOLDER_API_KEY` and `OPENWEATHERMAP_API_KEY`).
 4. Place the sales data CSV file (`sales_data.csv`) in the appropriate directory.
 5. Run the `sales_data_pipeline.py` script to execute the data pipeline.
+for example: python sales_data_pipeline.py sales_data.csv (source file name)
 
 ### Usage
 1. Execute the `sales_data_pipeline.py` script to start the data pipeline.
 2. Monitor the console for any output messages or errors.
 3. After execution, check the SQLite database (`sales_analytics_database.db`) for the transformed and aggregated data.
+for example:sales_analytics_database
 
 ## Database Schema
 The database schema used to store the transformed and aggregated data is as follows:
