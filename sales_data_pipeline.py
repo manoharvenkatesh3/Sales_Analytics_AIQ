@@ -67,7 +67,7 @@ user_data = fetch_user_data(user_ids)
 user_sales_df = pd.json_normalize(user_data)[['id', 'name', 'username', 'email', 'address.geo.lat', 'address.geo.lng']]
 merged_df = pd.merge(sales_df, user_sales_df, left_on='customer_id', right_on='id', how='left')
 merged_df = merged_df.rename(columns={'price':'sales_amount','quantity':'order_quantity','address.geo.lat':'lat','address.geo.lng':'lon'})
-print("n Printing user data from the JSONPlaceholder API")
+print("\n Printing user data from the JSONPlaceholder API")
 print(merged_df)
 '''
 import json
